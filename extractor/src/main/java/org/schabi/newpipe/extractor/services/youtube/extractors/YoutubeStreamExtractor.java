@@ -740,11 +740,29 @@ public class YoutubeStreamExtractor extends StreamExtractor {
             }
         }
 
-        // Prefer a manually created track as the translation source, else the first translatable
+        // If YouTube lists the available translation languages, Hebrew must be one of them
+        final JsonArray translationLanguages =
+                playerCaptionsTracklistRenderer.getArray("translationLanguages");
+        if (!translationLanguages.isEmpty()) {
+            boolean hebrewAvailable = false;
+            for (int i = 0; i < translationLanguages.size(); i++) {
+                final String code = translationLanguages.getObject(i).getString("languageCode");
+                if (targetLanguage.equals(code) || "iw".equals(code)) {
+                    hebrewAvailable = true;
+                    break;
+                }
+            }
+            if (!hebrewAvailable) {
+                return;
+            }
+        }
+
+        // Prefer a manually created track as the translation source, else the first translatable.
+        // Some player clients omit "isTranslatable", so only skip tracks marked as not translatable
         JsonObject source = null;
         for (int i = 0; i < captionsArray.size(); i++) {
             final JsonObject track = captionsArray.getObject(i);
-            if (!track.getBoolean("isTranslatable", false) || track.getString("baseUrl") == null
+            if (!track.getBoolean("isTranslatable", true) || track.getString("baseUrl") == null
                     || track.getString("vssId") == null) {
                 continue;
             }
